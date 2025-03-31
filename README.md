@@ -1,44 +1,175 @@
-"""
-This module is a Flask app that serves the EgaPro data via a JSON API.
-It reads the data from a CSV file and serves it as a JSON object.
-"""
+# API
 
-from csv import DictReader
-from flask import Flask, jsonify
+# Documentation des API (REST et SOAP)
 
-# Read the index-egalite-fh.csv file and store it in a dictionary
-egapro_data = {}
+## Introduction
 
-with open("index-egalite-fh-utf8.csv", encoding="utf-8") as csv_file:
-    reader = DictReader(csv_file, delimiter=";", quotechar='"')
-    for row in reader:
-        if egapro_data.get(row["SIREN"]) is None:
-            egapro_data[row["SIREN"]] = row
-        elif egapro_data[row["SIREN"]]["Année"] < row["Année"]:
-            egapro_data[row["SIREN"]].update(row)
+Ce projet implémente trois API permettant de rechercher des entreprises par leur numéro SIREN à partir d'un fichier CSV contenant des données sur l'index d'égalité femmes-hommes.  
+Les API sont implémentées en Python avec Flask et Flask-RESTx pour l'API REST, et Flask avec Zeep pour l'API SOAP.
 
-application = Flask(__name__)
+## Prérequis
 
-# Define the SIREN route taking a SIREN as a parameter and returning the
-# corresponding data from the egapro_data dictionary
-@application.route("/siren/<siren>")
-def siren(siren: str):  # Correction ici : siren doit être un str
-    """
-    Return the EgaPro data for a given SIREN number.
-    A 404 is returned if the SIREN is not found.
+- Python 3.x
+- Flask
+- Flask-RESTx
+- pandas
+- Zeep
+- lxml
 
-    :param siren: SIREN number as a string
-    :return: The corresponding data as JSON
-    """
-    response = egapro_data.get(siren)  # Les clés du dict sont des strings
+**Vous devez installer les dépendances avec la commande :**
 
-    if response is None:
-        response = {"error": "SIREN not found"}
-        status = 404
-    else:
-        status = 200
-    return jsonify(response), status
+```
+pip install flask flask-restx pandas zeep lxml
 
-# A debug Flask launcher
-if __name__ == "__main__":
-    application.run(debug=True)
+```
+
+## 1\. API REST
+
+### Fonctionnalité
+
+L'API permet d'obtenir des informations sur une entreprise à partir de son numéro SIREN.
+
+### Chercher une entreprise par son SIREN
+
+```
+- GET /siren/<siren_id> : Recherche une entreprise par son numéro SIREN.
+```
+
+### Paramètres
+
+- **Entrée** : siren_id (string) - Numéro SIREN de l'entreprise recherchée.
+- **Sortie** : JSON contenant les informations de l'entreprise ou un message d'erreur si le SIREN n'est pas trouvé.
+
+### Utilisation
+
+Vous devez utiliser POSTMAN pour effectuer votre requête.
+
+#### Requête
+
+```
+curl -X GET "http://localhost:5000/siren/123456789"
+```
+
+#### Réponse
+
+```
+{
+    "Année": "2023",
+    "Structure": "Entreprise XYZ",
+    "Tranche d'effectifs": "50-99",
+    "SIREN": "123456789",
+    "Raison Sociale": "XYZ SAS",
+    "Région": "Île-de-France",
+    "Département": "75",
+    "Pays": "France",
+    "Code NAF": "6201Z",
+    "Note Index": "85"
+}
+```
+
+### Lancement du serveur
+
+```
+python rest_api.py
+```
+
+Par défaut, l'API sera disponible à l'adresse http://localhost:5000 ou 127.0.0.1:5000.
+
+## 2\. API SOAP
+
+### Fonctionnalité
+
+L'API SOAP permet de récupérer les mêmes informations qu'avec l'API REST, mais en utilisant le protocole SOAP.
+
+### Paramètres
+
+- **Entrée** : siren (string) - Numéro SIREN de l'entreprise recherchée.
+- **Sortie** : XML contenant les informations de l'entreprise ou un message d'erreur si le SIREN n'est pas trouvé.
+
+### Exemple d'utilisation
+
+#### Requête SOAP (XML)
+
+```
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+    <soap:Body>
+        <GetSiren>
+            <siren>123456789</siren>
+        </GetSiren>
+    </soap:Body>
+</soap:Envelope>
+```
+
+#### Exemple de réponse SOAP (XML)
+
+```
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+    <soap:Body>
+        <GetSirenResponse>
+            <Année>2023</Année>
+            <Structure>Entreprise XYZ</Structure>
+            <Tranche_deffectifs>50-99</Tranche_deffectifs>
+            <SIREN>123456789</SIREN>
+            <Raison_Sociale>XYZ SAS</Raison_Sociale>
+            <Région>Île-de-France</Région>
+            <Département>75</Département>
+            <Pays>France</Pays>
+            <Code_NAF>6201Z</Code_NAF>
+            <Note_Index>85</Note_Index>
+        </GetSirenResponse>
+    </soap:Body>
+</soap:Envelope>
+```
+
+## Lancement du serveur
+
+Utiliser la commande : python soap_api.py dans un terminal de commandes.  
+L'API sera disponible à l'adresse http://localhost:8000.
+
+## 1\. API REST
+
+### Fonctionnalité
+
+L'API permet d'obtenir des informations sur une entreprise à partir de son numéro SIREN.
+
+### Paramètres
+
+- **Entrée** : siren_id (string) - Numéro SIREN de l'entreprise recherchée.
+- **Sortie** : JSON contenant les informations de l'entreprise ou un message d'erreur si le SIREN n'est pas trouvé.
+
+### Utilisation
+
+Vous devez utiliser POSTMAN pour effectuer votre requête.
+
+#### Requête
+
+```
+"http://localhost:5000/siren/123456789"
+```
+
+#### Réponse
+
+```
+{
+    "Année": "2023",
+    "Structure": "Entreprise XYZ",
+    "Tranche d'effectifs": "50-99",
+    "SIREN": "123456789",
+    "Raison Sociale": "XYZ SAS",
+    "Région": "Île-de-France",
+    "Département": "75",
+    "Pays": "France",
+    "Code NAF": "6201Z",
+    "Note Index": "85"
+}
+```
+
+### Lancement du serveur
+
+```
+python rest_api.py
+```
+
+Par défaut, l'API sera disponible à l'adresse http://localhost:5000/siren/(suivi de votre siren)
+
+&nbsp;
